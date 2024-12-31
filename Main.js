@@ -1,7 +1,7 @@
 const JSONCompare = require('./JSONChangeCheck.js')
 const TypeUtils = require('./TypeUtils.js');
 let compare = new JSONCompare();
-//console.log(TypeUtils.parseType('string'));
+console.log(TypeUtils.parseType(true));
 //console.log(TypeUtils.isNull('null'));
 //console.log(TypeUtils.isNumber('a1a'));
 //console.log(TypeUtils.isString(''), TypeUtils.isString('1'), TypeUtils.isString('a'), TypeUtils.isString());

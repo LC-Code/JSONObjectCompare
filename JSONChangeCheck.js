@@ -44,7 +44,7 @@ const JSONCompare = (function () {
             } else {
                 //判断是否是JSON String
                 if (TypeUtils.isJsonStr(v1) || TypeUtils.isJsonStr(v2)) {
-                    compare = compareBuilder.jsonStrCompare(v1, v2, compareLogic);
+                    compare = compareBuilder.__jsonStrCompare(v1, v2, compareLogic);
                 } else {
                     let compareFun = compareBuilder.bulider(type1);
                     compare = compareFun(v1, v2);
