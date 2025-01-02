@@ -12,16 +12,17 @@ module.exports = (function (){
         },
     
         isNumber: function (value) {
-            if(!this.isNull(value)){
-                let type = this.parseType(value);
-                if(type === 'number') {
-                    return true;
-                }else if (type === 'string') {
-                    let matchResult = value.match(this.NUMBER_REGEX);
-                    return !!matchResult && matchResult.length === 1;
-                }
-            }
-            return false;
+            return isFinite(value);
+            // if(!this.isNull(value)){
+            //     let type = this.parseType(value);
+            //     if(type === 'number') {
+            //         return true;
+            //     }else if (type === 'string') {
+            //         let matchResult = value.match(this.NUMBER_REGEX);
+            //         return !!matchResult && matchResult.length === 1;
+            //     }
+            // }
+            // return false;
         },
     
         isString: function (value) {

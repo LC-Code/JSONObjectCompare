@@ -1,5 +1,9 @@
 const TypeUtils = require('./TypeUtils.js');
-module.exports = (function () {
+const CompareLogic = {
+    JSON_STRING_AS_OBJECT: 'JSON_STRING_AS_OBJECT',
+    NUMBER_STRING_AS_NUMBER: 'NUMBER_STRING_AS_NUMBER',
+};
+const CompareBuilder = (new function () {
     return class CompareBuilder {
         bulider(type) {
             switch (type) {
@@ -28,7 +32,7 @@ module.exports = (function () {
         }
 
         //这里的JSON 字符串的比较本质上还是对象的比较
-        __jsonStrCompare(v1, v2, compareLogic) {
+        __jsonStrCompare(v1, v2, ...compareLogic) {
             return this.__objectCompare(v1, v2, compareLogic);
         }
         //字符串比较
@@ -37,14 +41,18 @@ module.exports = (function () {
         }
         //数值比较
         __numberCompare(v1, v2) {
-            return v1 === v2;
+            if (TypeUtils.isNumber(v1) && TypeUtils.isNumber(v2)) {
+                return parseFloat(v1) === parseFloat(v2);
+            } else {
+                return false;
+            }
         }
         //对象比较
-        __objectCompare(v1, v2, compareLogic) {
+        __objectCompare(v1, v2, ...compareLogic) {
             let keys = this.__getKeys(v1, v2);
             let compareInfo = {};
             let compareStatus = true;
-            for(let attribute of keys) {
+            for (let attribute of keys) {
                 let result = this.compareCode(v1[attribute], v2[attribute], compareLogic);
                 compareInfo[attribute] = result;
                 compareStatus = compareStatus && this.parseCompareStatus(result);
@@ -60,7 +68,7 @@ module.exports = (function () {
 
         }
         //数组比较
-        __arrayCompare(v1, v2, compareLogic) {
+        __arrayCompare(v1, v2, ...compareLogic) {
             if (v1.length === v2.length) {
                 //同规则排序
                 v1.sort();
@@ -79,22 +87,13 @@ module.exports = (function () {
                 return false;
             }
         }
-        parseCompareStatus (compare) {
+        parseCompareStatus(compare) {
             if (TypeUtils.parseType(compare) === 'boolean') {
                 return compare;
             }
-            if(TypeUtils.parseType(compare) === 'object'){
+            if (TypeUtils.parseType(compare) === 'object') {
                 let compareStatus = this.parseCompareStatus(compare.compare);
                 return compareStatus;
-                // if (!compareStatus) {
-                //     return compareStatus;
-                // }
-                //遍历比较结果，如果所有的比较结果都是true(也就是相同)返回True, 如果存在一个false,结束遍历，返回false
-                // for (let attribute of compare) {
-                //     let compareStatus = this.__parseCompareStatus(compare[attribute].compare);
-                    
-                // }
-                // return true;
             }
             //如果compare 不是对象，也不是Boolean 类型，直接返回False;
             return false;
@@ -112,18 +111,31 @@ module.exports = (function () {
             return [...keys];
         }
 
-        compareCode (v1, v2, compareLogic) {
+        compareCode(v1, v2, ...compareLogic) {
+            compareLogic = compareLogic || [];
             //获取数据类型
             let t1 = TypeUtils.parseType(v1);
             let t2 = TypeUtils.parseType(v2);
             let compare;
             if (t1 !== t2) {
-                //TODO
                 /**
                  * 两个数据类型不相等，且存在的比较情况
                  * 数值字符串（string) -- 数值 (number)
                  * JSON字符串 (string) -- 对象 (object)
                  */
+                if (['string', 'number'].includes(t1) && ['string', 'number'].includes(t2)) {
+                    if (compareLogic.includes(CompareLogic.NUMBER_STRING_AS_NUMBER)) {
+                        compare = this.__numberCompare(v1, v2);
+                    }
+                } else if (['string', 'object'].includes(t1) && ['string', 'object'].includes(t2)) {
+                    if (compareLogic.includes(CompareLogic.JSON_STRING_AS_OBJECT)) {
+                        if (TypeUtils.isJsonStr(v1)) {
+                            compare = this.compareCode(JSON.parse(v1), v2);
+                        } else {
+                            compare = this.compareCode(v1, JSON.parse(v2));
+                        }
+                    }
+                }
                 compare = false;
             } else {
                 //两个类型相同的数据进行比较
@@ -131,12 +143,24 @@ module.exports = (function () {
                 /**
                  * 两个数据类型相等，且需要更加精细的比较的情况
                  * JSON 字符串(string) -- JSON 字符串(string)
+                 * 数值字符串（string) -- 数值字符串 (string)
+                 * 
                  */
+                if (TypeUtils.isJsonStr(v1) && TypeUtils.isJsonStr(v2)) {
+                    if (compareLogic.includes(CompareLogic.JSON_STRING_AS_OBJECT)) {
+                        compare = this.compareCode(JSON.parse(v1), JSON.parse(v2));
+                    }
+                }
+                if (TypeUtils.isNumber(v1) && TypeUtils.isNumber(v2)) {
+                    if (compareLogic.includes(CompareLogic.NUMBER_STRING_AS_NUMBER)) {
+                        compare = this.__numberCompare(v1, v2);
+                    }
+                }
                 compare = this.bulider(t1).call(this, v1, v2, compareLogic);
             }
             if (t1 === 'object' && t2 === 'object') {
                 return compare;
-            }else{
+            } else {
                 return {
                     compareInfo: {
                         _t1: t1,
@@ -149,4 +173,5 @@ module.exports = (function () {
             }
         }
     }
-}());
+ }());
+module.exports = {CompareBuilder: CompareBuilder, CompareLogic: CompareLogic};
