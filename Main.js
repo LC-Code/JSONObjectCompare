@@ -76,10 +76,12 @@ let fusionFormValueTest = async function () {
     let test_02 = await readJsonFile(testJson_02);
 
     // console.debug(compare.compare(testObject1, testObject2));
-    let result = compareBuilder.compareCode(test_01, test_02, CompareLogic.JSON_STRING_AS_OBJECT, CompareLogic.NUMBER_STRING_AS_NUMBER);
-    console.debug(result);
-    // console.info(JSON.stringify(result, null, '\t'));
+    let result = compareBuilder.compareCode(test_01, test_02, [CompareLogic.JSON_STRING_AS_OBJECT, CompareLogic.NUMBER_STRING_AS_NUMBER]);
+    let diff = compareBuilder.differentInfo(result);
     console.debug(compareBuilder.parseCompareStatus(result));
+    console.debug(diff);
+    // console.debug(result);
+    // console.info(JSON.stringify(result, null, '\t'));
 }
 
 fusionFormValueTest();

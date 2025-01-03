@@ -32,7 +32,7 @@ const CompareBuilder = (new function () {
         }
 
         //这里的JSON 字符串的比较本质上还是对象的比较
-        __jsonStrCompare(v1, v2, ...compareLogic) {
+        __jsonStrCompare(v1, v2, compareLogic) {
             return this.__objectCompare(v1, v2, compareLogic);
         }
         //字符串比较
@@ -48,9 +48,9 @@ const CompareBuilder = (new function () {
             }
         }
         //对象比较
-        __objectCompare(v1, v2, ...compareLogic) {
+        __objectCompare(v1, v2, compareLogic) {
             let keys = this.__getKeys(v1, v2);
-            let compareInfo = {};
+            let compareInfo = new Map();
             let compareStatus = true;
             for (let attribute of keys) {
                 let result = this.compareCode(v1[attribute], v2[attribute], compareLogic);
@@ -68,7 +68,7 @@ const CompareBuilder = (new function () {
 
         }
         //数组比较
-        __arrayCompare(v1, v2, ...compareLogic) {
+        __arrayCompare(v1, v2, compareLogic) {
             if (v1.length === v2.length) {
                 //同规则排序
                 v1.sort();
@@ -111,7 +111,16 @@ const CompareBuilder = (new function () {
             return [...keys];
         }
 
-        compareCode(v1, v2, ...compareLogic) {
+        __isAttributeCompareInfo(compareInfo) {
+            let attributies = ['_v1', '_v2', '_t1', '_t2'];
+            let result = true;
+            for (let index in attributies) {
+                result = result && compareInfo.compareInfo.hasOwnProperty(attributies[index]);
+            }
+            return result;
+        }
+
+        compareCode(v1, v2, compareLogic) {
             compareLogic = compareLogic || [];
             //获取数据类型
             let t1 = TypeUtils.parseType(v1);
@@ -125,10 +134,14 @@ const CompareBuilder = (new function () {
                  */
                 if (['string', 'number'].includes(t1) && ['string', 'number'].includes(t2)) {
                     if (compareLogic.includes(CompareLogic.NUMBER_STRING_AS_NUMBER)) {
+                        t1 = 'number';
+                        t2 = 'number';
                         compare = this.__numberCompare(v1, v2);
                     }
                 } else if (['string', 'object'].includes(t1) && ['string', 'object'].includes(t2)) {
                     if (compareLogic.includes(CompareLogic.JSON_STRING_AS_OBJECT)) {
+                        t1 = 'object';
+                        t2 = 'object';
                         if (TypeUtils.isJsonStr(v1)) {
                             compare = this.compareCode(JSON.parse(v1), v2);
                         } else {
@@ -147,16 +160,20 @@ const CompareBuilder = (new function () {
                  * 
                  */
                 if (TypeUtils.isJsonStr(v1) && TypeUtils.isJsonStr(v2)) {
+                    t1 = 'object';
+                    t2 = 'object';
                     if (compareLogic.includes(CompareLogic.JSON_STRING_AS_OBJECT)) {
                         compare = this.compareCode(JSON.parse(v1), JSON.parse(v2));
                     }
-                }
-                if (TypeUtils.isNumber(v1) && TypeUtils.isNumber(v2)) {
+                }else if (TypeUtils.isNumber(v1) && TypeUtils.isNumber(v2)) {
+                    t1 = 'number';
+                    t2 = 'number';
                     if (compareLogic.includes(CompareLogic.NUMBER_STRING_AS_NUMBER)) {
                         compare = this.__numberCompare(v1, v2);
                     }
+                }else {
+                    compare = this.bulider(t1).call(this, v1, v2, compareLogic);
                 }
-                compare = this.bulider(t1).call(this, v1, v2, compareLogic);
             }
             if (t1 === 'object' && t2 === 'object') {
                 return compare;
@@ -171,6 +188,27 @@ const CompareBuilder = (new function () {
                     compare: compare,
                 }
             }
+        }
+
+        differentInfo(compareInfo) {
+            let me = this;
+            let keyValue = {};
+            let _ = (key, compareInfo) => {
+                //判断是否是对象比较
+                if (!compareInfo.compare) {
+                    let isAttributeCompare = me.__isAttributeCompareInfo(compareInfo);
+                    if (isAttributeCompare) {
+                        keyValue[key] = compareInfo.compareInfo;
+                    }else{
+                        let tempCompareInfo = compareInfo.compareInfo;
+                        for (let attribute in tempCompareInfo) {
+                            _(attribute, tempCompareInfo[attribute]);
+                        }
+                    }
+                }
+            }
+            _('root', compareInfo);
+            return keyValue;
         }
     }
  }());
